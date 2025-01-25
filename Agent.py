@@ -4,13 +4,13 @@ import random
 import torch
 import numpy as np
 from collections import deque
-
+import os
 from model import Linear_QNet, QTrainer
 from helper import plot
 from FlappyBirdRL import FlappyBirdGame
 
 MAX_MEMORY = 10000
-BATCH_SIZE = 128
+BATCH_SIZE = 1000
 LR = 0.01
 
 class Agent:
@@ -19,7 +19,7 @@ class Agent:
         self.epsilon = 0.1  # randomness
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY)
-        self.model = Linear_QNet(11, 256, 2)
+        self.model = Linear_QNet(11, 64, 2)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
     def get_state(self, game):
@@ -51,10 +51,10 @@ class Agent:
         else:
             state0 = torch.tensor(state, dtype=torch.float)
             prediction = self.model(state0)
-            print("prediciton is", prediction)
+            # print("prediciton is", prediction)
             move = torch.argmax(prediction).item()
             final_move[move] = 1
-            print("final move is", final_move)
+            # print("final move is", final_move)
         return final_move
 
 def train():
@@ -64,16 +64,18 @@ def train():
     record = 0
     agent = Agent()
     game = FlappyBirdGame()
-    agent.model.load()
+    if os.path.isfile('./model/model.pth'):
+        agent.model.load()
 
     while True:
         state_old = agent.get_state(game)
         final_move = agent.get_action(state_old)
-        reward, done, score = game.play_step(final_move)
+        g_reward, done, score = game.play_step(final_move)
+        print("reward is", g_reward)
         state_new = agent.get_state(game)
 
-        agent.train_short_memory(state_old, final_move, reward, state_new, done)
-        agent.remember(state_old, final_move, reward, state_new, done)
+        agent.train_short_memory(state_old, final_move, g_reward, state_new, done)
+        agent.remember(state_old, final_move, g_reward, state_new, done)
 
         if done:
             game.reset()

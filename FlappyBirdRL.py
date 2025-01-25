@@ -13,6 +13,7 @@ class FlappyBirdGame:
         self.game_active = True
         self.score = 0
         self.high_score = 0
+        self.reward = 0
 
         # Load assets
         self.bg_surface = pygame.transform.scale2x(pygame.image.load('assets/background-day.png').convert())
@@ -31,6 +32,7 @@ class FlappyBirdGame:
         self.bird_rect = self.bird_surface.get_rect(center=(100, 512))
         self.pipe_list = []
         self.floor_x_pos = 0
+        
 
         # Sounds
         self.flap_sound = pygame.mixer.Sound('sound/sfx_wing.wav')
@@ -47,6 +49,9 @@ class FlappyBirdGame:
         self.pipe_list.clear()
         self.score = 0
         self.game_active = True
+        # print(self.reward)
+        self.reward = 0.1
+        
 
     def play_step(self, action):
         """
@@ -54,19 +59,22 @@ class FlappyBirdGame:
         :param action: [0, 1] where 1 means "flap".
         :return: reward, done, score
         """
+        a =[0,0]
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == self.SPAWNPIPE:
-                self.pipe_list.extend(self.create_pipe())
+                a = self.create_pipe()
+                self.pipe_list.extend(a)
+                # self.pipe_list.extend(self.create_pipe())
 
         # Initialize reward
-        reward = 5  # Increased reward for surviving
+        self.reward += 0.1 # Increased reward for surviving
 
         # Bird movement
         if action[1] == 1:  # Flap
-            reward -= 0.5  # Reduced penalty for flapping
+            self.reward -= 0.1  # Reduced penalty for flapping
             self.bird_movement = -3
             self.flap_sound.play()
 
@@ -75,28 +83,37 @@ class FlappyBirdGame:
 
         # Penalize hitting the top or bottom of the screen
         if self.bird_rect.top <= -100 or self.bird_rect.bottom >= 800:
-            reward -= 15  # High penalty for going out of bounds
+            self.reward -= 15  # High penalty for going out of bounds
             self.game_active = False 
-            return reward, True, self.score
+            return self.reward, True, self.score
         
         # Reward for staying in the middle of the game
-        screen_center = self.screen.get_height() / 2
-        distance_from_center = abs(self.bird_rect.centery - screen_center)
-        reward += max(0, 10 - distance_from_center / 10)  # Reward decreases as bird moves away from center
+        # screen_center = self.screen.get_height() / 2
+        # distance_from_center = abs(self.bird_rect.centery - screen_center)
+        # reward += max(0, 10 - distance_from_center / 10)  # Reward decreases as bird moves away from center
+
+        
+        for pipe in self.pipe_list:
+            if self.bird_rect.centerx == pipe.centerx:
+                self.reward += 7 # Positive reward for being in line with a pipe
+                if a[0] !=0 and a[1] != 0:
+                    if self.bird_rect.centery < a[0].centery and self.bird_rect.centery > a[1].centery:
+                        self.reward += 10  # Positive reward for passing a pipe
 
         # Check collisions with pipes
         if not self.check_collision():
             self.game_active = False
-            reward -= 5  # Negative reward for dying
-            return reward, True, self.score
+            self.reward -= 10  # Negative reward for dying
+            return self.reward, True, self.score
 
         # Move pipes and check for passing
         previous_score = int(self.score)  # Keep track of score before moving pipes
+        # self.pipe_list = self.move_pipes(self.pipe_list)
         self.pipe_list = self.move_pipes(self.pipe_list)
 
         # Reward for passing pipes
         if int(self.score) > previous_score:
-            reward += 20  # Reduced reward for passing a pipe
+            self.reward += 20  # Reduced reward for passing a pipe
 
         # Update score and draw everything
         self.score += 0.01
@@ -104,7 +121,8 @@ class FlappyBirdGame:
         self.clock.tick(60)
 
 
-        return reward, False, self.score
+
+        return self.reward, False, self.score
 
     def get_game_state(self):
         """
@@ -164,6 +182,7 @@ class FlappyBirdGame:
         for pipe in pipes:
             pipe.centerx -= 5
         return [pipe for pipe in pipes if pipe.centerx > -50]
+
 
     def draw_elements(self):
         """Draw all elements on the screen."""
