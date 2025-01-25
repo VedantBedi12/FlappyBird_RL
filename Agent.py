@@ -9,15 +9,15 @@ from model import Linear_QNet, QTrainer
 from helper import plot
 from FlappyBirdRL import FlappyBirdGame
 
-MAX_MEMORY = 1000
-BATCH_SIZE = 64
-LR = 0.001
+MAX_MEMORY = 10000
+BATCH_SIZE = 128
+LR = 0.01
 
 class Agent:
     def __init__(self):
         self.n_games = 0
         self.epsilon = 0.1  # randomness
-        self.gamma = 0.99 # discount rate
+        self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY)
         self.model = Linear_QNet(11, 256, 2)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
@@ -64,6 +64,7 @@ def train():
     record = 0
     agent = Agent()
     game = FlappyBirdGame()
+    agent.model.load()
 
     while True:
         state_old = agent.get_state(game)
